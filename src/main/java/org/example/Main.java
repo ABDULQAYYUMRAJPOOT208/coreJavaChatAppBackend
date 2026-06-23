@@ -1,0 +1,44 @@
+package org.example;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+import org.example.controllers.SignUpController;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+public class Main {
+    public static void main(String[] args) {
+        HttpServer server = null;
+        try{
+            server= HttpServer.create( new InetSocketAddress("localhost",8080), 0);
+            server.createContext("/", new RootHandler());
+            server.createContext("/auth/sign-up", new SignUpController());
+            server.start();
+            System.out.println("Server is running on http://localhost:" + 8080);
+            Thread.currentThread().join();
+        }catch (Exception e)
+        {
+            System.out.println("Exception Occurred >> " + e);
+        }finally {
+            if(server != null)
+            {
+                server.stop(1);
+
+            }
+        }
+
+    }
+}
+
+class RootHandler implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        String response = "Server is Running...";
+        exchange.sendResponseHeaders(200, response.length());
+        try(OutputStream os = exchange.getResponseBody()){
+            os.write(response.getBytes());
+        }
+    }
+}

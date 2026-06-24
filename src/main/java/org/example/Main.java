@@ -3,6 +3,7 @@ package org.example;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import org.example.controllers.SignInController;
 import org.example.controllers.SignUpController;
 
 import java.io.IOException;
@@ -15,6 +16,7 @@ public class Main {
             server= HttpServer.create( new InetSocketAddress("localhost",8080), 0);
             server.createContext("/", new RootHandler());
             server.createContext("/auth/sign-up", new SignUpController());
+            server.createContext("/auth/sign-in", new SignInController());
             server.start();
             System.out.println("Server is running on http://localhost:" + 8080);
             Thread.currentThread().join();

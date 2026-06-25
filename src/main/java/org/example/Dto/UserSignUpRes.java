@@ -17,6 +17,11 @@ public class UserSignUpRes {
         this.id = id;
         this.message = message;
     }
+    public UserSignUpRes()
+    {
+
+    }
+
 
     public UserSignUpRes(long id, String message, String token) {
         this.id = id;

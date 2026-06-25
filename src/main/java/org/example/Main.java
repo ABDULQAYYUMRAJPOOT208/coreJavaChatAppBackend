@@ -1,10 +1,13 @@
 package org.example;
 
+import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import org.example.controllers.SendFriendRequest;
 import org.example.controllers.SignInController;
 import org.example.controllers.SignUpController;
+import org.example.filters.AuthFilter;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,18 +20,16 @@ public class Main {
             server.createContext("/", new RootHandler());
             server.createContext("/auth/sign-up", new SignUpController());
             server.createContext("/auth/sign-in", new SignInController());
+          HttpContext requestContext =  server.createContext("/request/send/", new SendFriendRequest());
+          requestContext.getFilters().add(new AuthFilter());
+
             server.start();
             System.out.println("Server is running on http://localhost:" + 8080);
-            Thread.currentThread().join();
+//            Thread.currentThread().join();
         }catch (Exception e)
         {
             System.out.println("Exception Occurred >> " + e);
-        }finally {
-            if(server != null)
-            {
-                server.stop(1);
-
-            }
+            e.printStackTrace();
         }
 
     }

@@ -13,31 +13,35 @@ import java.io.OutputStream;
 
 public class SignInController implements HttpHandler {
     @Override
-    public void handle(HttpExchange exchange)
-    {
-        if("POST".equals(exchange.getRequestMethod()))
-        {
-            try{
-
-            InputStream inputStream = exchange.getRequestBody();
-            String requestBody = new String(inputStream.readAllBytes());
-            ObjectMapper objectMapper = new ObjectMapper();
-            UserSignInReq userSignInReq = objectMapper.readValue(requestBody, UserSignInReq.class);
-            System.out.println("Sigin in request is >> "+ userSignInReq);
+    public void handle(HttpExchange exchange) throws IOException {
+        try {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                InputStream inputStream = exchange.getRequestBody();
+                String requestBody = new String(inputStream.readAllBytes());
+                ObjectMapper objectMapper = new ObjectMapper();
+                UserSignInReq userSignInReq = objectMapper.readValue(requestBody, UserSignInReq.class);
+                System.out.println("Sign in request is >> " + userSignInReq);
                 AuthService authService = new AuthService();
                 UserSignInRes userSignInRes = authService.signInUser(userSignInReq);
 
-            String response =userSignInRes.toString();
-            exchange.sendResponseHeaders(200, response.length());
-            try(OutputStream os = exchange.getResponseBody())
-            {
-                os.write(response.getBytes());
+                String response = userSignInRes.toString();
+                sendResponse(exchange, 200, response);
+            } else {
+                sendResponse(exchange, 405, "Method Not Allowed. Use POST.");
             }
-            }
-            catch (Exception e)
-            {
-                System.err.println("Error in Sign in handler >> "+ e);
-            }
+        } catch (Exception e) {
+            System.err.println("Error in Sign in handler >> " + e);
+            e.printStackTrace();
+            String response = "Error while signing in: " + e.getMessage();
+            sendResponse(exchange, 400, response);
+        }
+    }
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
+        exchange.sendResponseHeaders(statusCode, response.getBytes().length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(response.getBytes());
         }
     }
 }
+

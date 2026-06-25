@@ -12,43 +12,39 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class SignUpController implements HttpHandler {
+    @Override
     public void handle(HttpExchange exchange) throws IOException {
         System.out.println("SignUpController handle method called with method: " + exchange.getRequestMethod());
-        if("POST".equals(exchange.getRequestMethod()))
-        {
-            InputStream inputStream = exchange.getRequestBody();
-            String requestBody = new String(inputStream.readAllBytes());
-            ObjectMapper objectMapper = new ObjectMapper();
-            UserSignUpReq userSignUpReq = objectMapper.readValue(requestBody, UserSignUpReq.class);
-            try{
+        try {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                InputStream inputStream = exchange.getRequestBody();
+                String requestBody = new String(inputStream.readAllBytes());
+                ObjectMapper objectMapper = new ObjectMapper();
+                UserSignUpReq userSignUpReq = objectMapper.readValue(requestBody, UserSignUpReq.class);
+                
                 AuthService authService = new AuthService();
                 UserSignUpRes userSignUpRes = authService.SignUpUser(userSignUpReq);
                 System.out.println("User signed up successfully. Response: " + userSignUpRes.toString());
                 String response = userSignUpRes.toString();
-                exchange.sendResponseHeaders(201, response.length());
-
-                try(OutputStream os = exchange.getResponseBody()){
-                    os.write(response.getBytes());
-                }
+                sendResponse(exchange, 201, response);
                 System.out.println("Response sent successfully.");
-            }catch (Throwable e)
-            {
-                System.err.println("Error during user sign up: " + e.getMessage());
-                e.printStackTrace();
-                String response = "Error while creating user: " + e.getMessage();
-                exchange.sendResponseHeaders(500, response.length());
-                try(OutputStream os = exchange.getResponseBody()){
-                    os.write(response.getBytes());
-                }
-                System.err.println("Error response sent.");
+            } else {
+                System.out.println("Received non-POST request: " + exchange.getRequestMethod());
+                sendResponse(exchange, 405, "Method Not Allowed. Use POST.");
             }
-        } else {
-            System.out.println("Received non-POST request: " + exchange.getRequestMethod());
-            String response = "Method Not Allowed";
-            exchange.sendResponseHeaders(405, response.length());
-            try(OutputStream os = exchange.getResponseBody()){
-                os.write(response.getBytes());
-            }
+        } catch (Throwable e) {
+            System.err.println("Error during user sign up: " + e.getMessage());
+            e.printStackTrace();
+            String response = "Error while creating user: " + e.getMessage();
+            sendResponse(exchange, 500, response);
+            System.err.println("Error response sent.");
+        }
+    }
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String response) throws IOException {
+        exchange.sendResponseHeaders(statusCode, response.getBytes().length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(response.getBytes());
         }
     }
 }

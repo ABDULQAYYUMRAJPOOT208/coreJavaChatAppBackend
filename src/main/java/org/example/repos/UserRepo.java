@@ -4,6 +4,7 @@ import org.example.Dto.SignIn.UserSignInReq;
 import org.example.Dto.SignIn.UserSignInRes;
 import org.example.Dto.UserSignUpReq;
 import org.example.Dto.UserSignUpRes;
+import org.example.Dto.user.User;
 import org.example.utils.JWTUtil;
 
 import java.sql.*;
@@ -17,6 +18,7 @@ public class UserRepo {
         String insertQuery = "Insert into users (username, email, password) values (?,?,?)";
 
         try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
             System.out.println("[DEBUG] Connecting to database: " + DB_URL + " with user: " + DB_USER);
             try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
                 System.out.println("[DEBUG] Connection established successfully!");
@@ -70,6 +72,7 @@ public class UserRepo {
     }
     public UserSignInRes signInUser(UserSignInReq userSignInReq) throws Exception {
         String query = "Select * from users where email = ?";
+        Class.forName("com.mysql.cj.jdbc.Driver");
         try ( Connection connection = DriverManager.getConnection(DB_URL,DB_USER,DB_PASS))
         {
             try (PreparedStatement preparedStatement = connection.prepareStatement(query))
@@ -94,5 +97,28 @@ public class UserRepo {
                 }
             }
         }
+    }
+    public User getUserById(int id) throws SQLException {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException(e);
+        }
+        try(Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)){
+            String query = "Select username, email from users where id= ?";
+            try (PreparedStatement preparedStatement = connection.prepareStatement(query)){
+                preparedStatement.setInt(1,id);
+                try (ResultSet resultSet = preparedStatement.executeQuery()){
+                    if(resultSet.next()){
+                        String username = resultSet.getString("username");
+                        String email = resultSet.getString("email");
+                        return new User(
+                                id,username,email
+                        );
+                }
+            }
+        }
+            }
+        return null;
     }
 }

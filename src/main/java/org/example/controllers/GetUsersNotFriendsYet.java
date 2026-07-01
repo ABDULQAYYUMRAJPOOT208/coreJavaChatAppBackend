@@ -1,29 +1,41 @@
 package org.example.controllers;
 
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
+import org.example.Dto.user.User;
+import org.example.exception.BaseHandler;
 import org.example.repos.UserRepo;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
-public class GetUsersNotFriendsYet implements HttpHandler {
+public class GetUsersNotFriendsYet extends BaseHandler {
 
     @Override
-    public void handle(HttpExchange exchange) {
-        System.out.println("GetUsersNotFriendsYet handle method called");
-        if("GET".equals(exchange.getRequestMethod()))
-        {
-            System.out.println("GET request received");
-            String userId =(String) exchange.getAttribute("User-Id");
-            if(userId == null)
-            {
+    protected void handleRequest(HttpExchange exchange) throws Exception {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed");
+            return;
+        }
 
-            }else{
-                System.out.println("User Id: " + userId);
-                UserRepo userRepo = new UserRepo();
-                userRepo.getUsersNotFriendsyet(Integer.parseInt(userId));
+        String userId = (String) exchange.getAttribute("User-Id");
+
+        // Parse optional ?query= parameter from the URL
+        String searchQuery = null;
+        String rawQuery = exchange.getRequestURI().getQuery(); // e.g. "query=john"
+        if (rawQuery != null) {
+            for (String param : rawQuery.split("&")) {
+                if (param.startsWith("query=")) {
+                    searchQuery = URLDecoder.decode(
+                        param.substring("query=".length()), StandardCharsets.UTF_8);
+                    break;
+                }
             }
         }
+
+        UserRepo userRepo = new UserRepo();
+        List<User> users = userRepo.getUsersNotFriendship(Integer.parseInt(userId), searchQuery);
+
+        sendJson(exchange, 200, users);
     }
 }

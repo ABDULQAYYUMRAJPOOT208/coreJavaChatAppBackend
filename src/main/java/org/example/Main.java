@@ -4,10 +4,7 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import org.example.controllers.GetUsersNotFriendsYet;
-import org.example.controllers.SendFriendRequest;
-import org.example.controllers.SignInController;
-import org.example.controllers.SignUpController;
+import org.example.controllers.*;
 import org.example.filters.AuthFilter;
 
 import java.io.IOException;
@@ -28,6 +25,12 @@ public class Main {
             HttpContext requestContext =  server.createContext("/request/send/", new SendFriendRequest());
             requestContext.getFilters().add(new AuthFilter());
 
+            HttpContext getAllRequest = server.createContext("/request/all", new GetAllRequestController());
+            getAllRequest.getFilters().add(new AuthFilter());
+
+            HttpContext cancelRequest = server.createContext("/request/cancel/", new DeleteRequestController());
+            cancelRequest.getFilters().add(new AuthFilter());
+
             server.start();
             System.out.println("Server is running on http://localhost:" + 8080);
 //            Thread.currentThread().join();
@@ -43,10 +46,20 @@ public class Main {
 class RootHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        String response = "Server is Running...";
-        exchange.sendResponseHeaders(200, response.length());
-        try(OutputStream os = exchange.getResponseBody()){
-            os.write(response.getBytes());
+        String path = exchange.getRequestURI().getPath();
+
+        if ("/".equals(path)) {
+            String response = "Server is Running...";
+            exchange.sendResponseHeaders(200, response.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        } else {
+            String response = "404 Not Found: Route does not exist";
+            exchange.sendResponseHeaders(404, response.length());
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
         }
     }
 }

@@ -2,65 +2,49 @@ package org.example.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import org.example.Dto.request.SendRequestReq;
+import org.example.exception.BadRequestException;
+import org.example.exception.BaseHandler;
 import org.example.services.FriendRequestService;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 
-public class SendFriendRequest implements HttpHandler {
+public class SendFriendRequest extends BaseHandler {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final FriendRequestService friendRequestService = new FriendRequestService();
+
     @Override
-    public void handle(HttpExchange httpExchange) throws IOException {
-        System.out.println("SendFriendRequest handle method called");
-        try {
-            if ("POST".equals(httpExchange.getRequestMethod())) {
-                InputStream inputStream = httpExchange.getRequestBody();
-                String requestBody = new String(inputStream.readAllBytes());
-                System.out.println("Request body: " + requestBody);
-                ObjectMapper objectMapper = new ObjectMapper();
-                SendRequestReq sendRequestReq  = objectMapper.readValue(
-                        requestBody, SendRequestReq.class
-                );
+    protected void handleRequest(HttpExchange exchange) throws Exception {
+        System.out.println("SendFriendRequest handleRequest called");
 
-
-//                String path = httpExchange.getRequestURI().getPath();
-//                String baseContext = "/request/send/";
-//                if (path == null || !path.startsWith(baseContext) || path.length() <= baseContext.length()) {
-//                    sendResponse(httpExchange, 400, "Error while sending friend request: Invalid receiver ID in path.");
-//                    return;
-//                }
-                String receiverId = sendRequestReq.getReceiverId();
-                if (receiverId.isEmpty()) {
-                    sendResponse(httpExchange, 400, "Error while sending friend request: Receiver ID cannot be empty.");
-                    return;
-                }
-
-                String senderId = (String) httpExchange.getAttribute("User-Id");
-                if (senderId == null || senderId.trim().isEmpty()) {
-                    sendResponse(httpExchange, 401, "Error while sending friend request: Unauthorized: Missing sender User-Id.");
-                    return;
-                }
-
-                FriendRequestService friendRequestService = new FriendRequestService();
-                int id = friendRequestService.sendFriendRequest(senderId, receiverId);
-                String response = "Friend request successfully sent...";
-                sendResponse(httpExchange, 201, response);
-            } else {
-                sendResponse(httpExchange, 405, "Method Not Allowed. Use POST.");
-            }
-        } catch (Exception e) {
-            e.printStackTrace(); // Added for debugging
-            String response = "Error while sending friend request: " + e.getMessage();
-            sendResponse(httpExchange, 400, response);
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            sendText(exchange, 405, "Method Not Allowed. Use POST.");
+            return;
         }
-    }
 
-    private void sendResponse(HttpExchange httpExchange, int statusCode, String response) throws IOException {
-        httpExchange.sendResponseHeaders(statusCode, response.getBytes().length);
-        try (OutputStream os = httpExchange.getResponseBody()) {
-            os.write(response.getBytes());
+        InputStream inputStream = exchange.getRequestBody();
+        String requestBody = new String(inputStream.readAllBytes());
+        System.out.println("Request body: " + requestBody);
+        String path = exchange.getRequestURI().getPath();
+        String receiverId = path.substring(path.lastIndexOf("/") + 1);
+//        SendRequestReq sendRequestReq = objectMapper.readValue(requestBody, SendRequestReq.class);
+
+        if (receiverId.isEmpty()) {
+            // BadRequestException → 400 sent automatically by BaseHandler
+            throw new BadRequestException("Receiver ID cannot be empty.");
         }
+
+        String senderId = (String) exchange.getAttribute("User-Id");
+        if (senderId == null || senderId.trim().isEmpty()) {
+            // This is a safety net; AuthFilter already blocks unauthenticated requests
+            throw new BadRequestException("Missing sender User-Id.");
+        }
+
+        // friendRequestService.sendFriendRequest() can throw any AppException subclass
+        // and it will be handled automatically — no try/catch needed here.
+        friendRequestService.sendFriendRequest(senderId, receiverId);
+
+        sendText(exchange, 201, "Friend request successfully sent.");
     }
 }

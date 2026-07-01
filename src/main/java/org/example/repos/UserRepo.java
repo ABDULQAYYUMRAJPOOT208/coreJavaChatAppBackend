@@ -5,6 +5,9 @@ import org.example.Dto.SignIn.UserSignInRes;
 import org.example.Dto.UserSignUpReq;
 import org.example.Dto.UserSignUpRes;
 import org.example.Dto.user.User;
+import org.example.exception.DuplicateResourceException;
+import org.example.exception.InvalidPasswordException;
+import org.example.exception.UserNotFoundException;
 import org.example.utils.JWTUtil;
 import org.example.utils.PasswordHasher;
 
@@ -61,6 +64,9 @@ public class UserRepo {
                     }
                 }
             }
+        } catch (SQLIntegrityConstraintViolationException e) {
+            // Duplicate email — DB unique constraint violated
+            throw new DuplicateResourceException("Email is already registered");
         } catch (Throwable e) {
             System.err.println("[DEBUG] Catch block caught Throwable in UserRepo createUser: " + e.getMessage());
             e.printStackTrace();
@@ -90,11 +96,12 @@ public class UserRepo {
                             String token = jwtUtil.generateToken(userId);
                             return new UserSignInRes(userId, "User Signed In Successfully...", token);
                         } else {
-                            throw new Exception("Invalid password");
-
+                            // Wrong password → HTTP 401
+                            throw new InvalidPasswordException("Incorrect password");
                         }
                     } else {
-                        throw new Exception("User not found");
+                        // No user row found → HTTP 404
+                        throw new UserNotFoundException("User with email " + userSignInReq.getEmail() + " not found");
                     }
 
                 }
@@ -125,28 +132,55 @@ public class UserRepo {
         return null;
     }
 
-    public void getUsersNotFriendsyet(int id) {
-        try {
-            List<Integer> friendIds = new ArrayList<>();
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            String queryGetOtherThanMe = "Select receiverId from friends where sender_id != ?";
-            try (Connection connection = DriverManager.getConnection(DB_URL,DB_USER, DB_PASS)){
-                try (PreparedStatement preparedStatement = connection.prepareStatement(queryGetOtherThanMe)){
-                    preparedStatement.setInt(1,id);
-                    ResultSet resultSet = preparedStatement.executeQuery();
-                    if (resultSet.next()) {
-                        int friendId = resultSet.getInt("receiverId");
-                        friendIds.add(friendId);
-                    }
+    /**
+     * Search users who are not yet friends/have no pending request with the given user.
+     * Filters by username or email containing the search query (case-insensitive).
+     *
+     * @param id    the current user's id
+     * @param query search term (empty/null returns all non-friend users)
+     * @return list of matching User objects
+     */
+    public List<User> getUsersNotFriendship(int id, String query) throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+
+        String likeParam = (query == null || query.isBlank()) ? "%" : "%" + query.trim() + "%";
+
+        String sql =
+            "SELECT id, username, email FROM users " +
+            "WHERE id != ? " +
+            "AND id NOT IN (" +
+            "  SELECT receiver_id FROM friends WHERE sender_id = ? " +
+            "  UNION SELECT sender_id FROM friends WHERE receiver_id = ?" +
+            ") " +
+            "AND id NOT IN (" +
+            "  SELECT receiver_id FROM friend_requests WHERE sender_id = ? " +
+            "  UNION SELECT sender_id FROM friend_requests WHERE receiver_id = ?" +
+            ") " +
+            "AND (username LIKE ? OR email LIKE ?) " +
+            "LIMIT 20";
+
+        List<User> results = new ArrayList<>();
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            ps.setInt(2, id);
+            ps.setInt(3, id);
+            ps.setInt(4, id);
+            ps.setInt(5, id);
+            ps.setString(6, likeParam);
+            ps.setString(7, likeParam);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("email")
+                    ));
                 }
             }
-            for (int f : friendIds)
-            {
-                System.out.println("Friend Id: " + f);
-            }
-        }catch (Exception e)
-        {
-
         }
+        return results;
     }
 }

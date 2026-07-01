@@ -6,8 +6,11 @@ import org.example.Dto.UserSignUpReq;
 import org.example.Dto.UserSignUpRes;
 import org.example.Dto.user.User;
 import org.example.utils.JWTUtil;
+import org.example.utils.PasswordHasher;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserRepo {
     String DB_URL = "jdbc:mysql://localhost:3306/chatApp";
@@ -28,7 +31,7 @@ public class UserRepo {
                     System.out.println("[DEBUG] PreparedStatement created. Setting values...");
                     preparedStatement.setString(1, userSignUpReq.getUsername());
                     preparedStatement.setString(2, userSignUpReq.getEmail());
-                    preparedStatement.setString(3, userSignUpReq.getPassword());
+                    preparedStatement.setString(3, PasswordHasher.hashedPassword(userSignUpReq.getPassword()));
                     
                     System.out.println("[DEBUG] Executing update...");
                     int affectedRows = preparedStatement.executeUpdate();
@@ -81,7 +84,7 @@ public class UserRepo {
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     if (resultSet.next()) {
                         String password = resultSet.getString("password");
-                        if (password.equals(userSignInReq.getPassword())) {
+                        if (PasswordHasher.verifyPassword(userSignInReq.getPassword(), password)) {
                             long userId = resultSet.getLong("id");
                             JWTUtil jwtUtil = new JWTUtil();
                             String token = jwtUtil.generateToken(userId);
@@ -120,5 +123,30 @@ public class UserRepo {
         }
             }
         return null;
+    }
+
+    public void getUsersNotFriendsyet(int id) {
+        try {
+            List<Integer> friendIds = new ArrayList<>();
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            String queryGetOtherThanMe = "Select receiverId from friends where sender_id != ?";
+            try (Connection connection = DriverManager.getConnection(DB_URL,DB_USER, DB_PASS)){
+                try (PreparedStatement preparedStatement = connection.prepareStatement(queryGetOtherThanMe)){
+                    preparedStatement.setInt(1,id);
+                    ResultSet resultSet = preparedStatement.executeQuery();
+                    if (resultSet.next()) {
+                        int friendId = resultSet.getInt("receiverId");
+                        friendIds.add(friendId);
+                    }
+                }
+            }
+            for (int f : friendIds)
+            {
+                System.out.println("Friend Id: " + f);
+            }
+        }catch (Exception e)
+        {
+
+        }
     }
 }

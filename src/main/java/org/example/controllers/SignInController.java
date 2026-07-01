@@ -20,11 +20,13 @@ public class SignInController implements HttpHandler {
                 String requestBody = new String(inputStream.readAllBytes());
                 ObjectMapper objectMapper = new ObjectMapper();
                 UserSignInReq userSignInReq = objectMapper.readValue(requestBody, UserSignInReq.class);
-                System.out.println("Sign in request is >> " + userSignInReq);
+                System.out.println("Sign in request is >> " + userSignInReq.toString());
                 AuthService authService = new AuthService();
                 UserSignInRes userSignInRes = authService.signInUser(userSignInReq);
 
-                String response = userSignInRes.toString();
+                String response = objectMapper.writeValueAsString(userSignInRes);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+
                 sendResponse(exchange, 200, response);
             } else {
                 sendResponse(exchange, 405, "Method Not Allowed. Use POST.");

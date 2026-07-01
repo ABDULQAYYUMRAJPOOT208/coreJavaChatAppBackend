@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import org.example.controllers.GetUsersNotFriendsYet;
 import org.example.controllers.SendFriendRequest;
 import org.example.controllers.SignInController;
 import org.example.controllers.SignUpController;
@@ -20,8 +21,12 @@ public class Main {
             server.createContext("/", new RootHandler());
             server.createContext("/auth/sign-up", new SignUpController());
             server.createContext("/auth/sign-in", new SignInController());
-          HttpContext requestContext =  server.createContext("/request/send/", new SendFriendRequest());
-          requestContext.getFilters().add(new AuthFilter());
+
+            HttpContext getUsersNotFriendsYet = server.createContext("/users/get-not-friends-yet", new GetUsersNotFriendsYet());
+            getUsersNotFriendsYet.getFilters().add(new AuthFilter());
+
+            HttpContext requestContext =  server.createContext("/request/send/", new SendFriendRequest());
+            requestContext.getFilters().add(new AuthFilter());
 
             server.start();
             System.out.println("Server is running on http://localhost:" + 8080);

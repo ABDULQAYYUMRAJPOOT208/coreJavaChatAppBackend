@@ -1,10 +1,13 @@
 package org.example.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.example.Dto.request.SendRequestReq;
 import org.example.services.FriendRequestService;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 public class SendFriendRequest implements HttpHandler {
@@ -13,13 +16,22 @@ public class SendFriendRequest implements HttpHandler {
         System.out.println("SendFriendRequest handle method called");
         try {
             if ("POST".equals(httpExchange.getRequestMethod())) {
-                String path = httpExchange.getRequestURI().getPath();
-                String baseContext = "/request/send/";
-                if (path == null || !path.startsWith(baseContext) || path.length() <= baseContext.length()) {
-                    sendResponse(httpExchange, 400, "Error while sending friend request: Invalid receiver ID in path.");
-                    return;
-                }
-                String receiverId = path.substring(baseContext.length()).trim();
+                InputStream inputStream = httpExchange.getRequestBody();
+                String requestBody = new String(inputStream.readAllBytes());
+                System.out.println("Request body: " + requestBody);
+                ObjectMapper objectMapper = new ObjectMapper();
+                SendRequestReq sendRequestReq  = objectMapper.readValue(
+                        requestBody, SendRequestReq.class
+                );
+
+
+//                String path = httpExchange.getRequestURI().getPath();
+//                String baseContext = "/request/send/";
+//                if (path == null || !path.startsWith(baseContext) || path.length() <= baseContext.length()) {
+//                    sendResponse(httpExchange, 400, "Error while sending friend request: Invalid receiver ID in path.");
+//                    return;
+//                }
+                String receiverId = sendRequestReq.getReceiverId();
                 if (receiverId.isEmpty()) {
                     sendResponse(httpExchange, 400, "Error while sending friend request: Receiver ID cannot be empty.");
                     return;

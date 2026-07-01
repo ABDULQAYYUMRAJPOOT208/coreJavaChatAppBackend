@@ -25,7 +25,9 @@ public class SignUpController implements HttpHandler {
                 AuthService authService = new AuthService();
                 UserSignUpRes userSignUpRes = authService.SignUpUser(userSignUpReq);
                 System.out.println("User signed up successfully. Response: " + userSignUpRes.toString());
-                String response = userSignUpRes.toString();
+
+                String response = objectMapper.writeValueAsString(userSignUpRes);
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
                 sendResponse(exchange, 201, response);
                 System.out.println("Response sent successfully.");
             } else {

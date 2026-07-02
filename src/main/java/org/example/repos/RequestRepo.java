@@ -1,7 +1,6 @@
 package org.example.repos;
 
 import org.example.Dto.request.FriendRequestDTO;
-import org.example.Dto.user.User;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -63,7 +62,7 @@ public class RequestRepo {
                         + "FROM friend_requests fr "
                         + "JOIN users u ON (fr.sender_id = ? AND fr.receiver_id = u.id) "
                         + "             OR (fr.receiver_id = ? AND fr.sender_id = u.id) "
-                        + "WHERE (fr.sender_id = ? OR fr.receiver_id = ?)";
+                        + "WHERE (fr.sender_id = ? OR fr.receiver_id = ?) and fr.status = 'PENDING'";
 
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
              PreparedStatement stmt = connection.prepareStatement(unifiedQuery)) {
@@ -99,6 +98,96 @@ public class RequestRepo {
 
             int affectedRows = deleteStmt.executeUpdate();
             return affectedRows > 0 ? 1 : -1;
+        }
+    }
+    public boolean acceptFriendRequest(int id, int receiverId) throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String updateStatus = "UPDATE friend_requests SET status = 'ACCEPTED' WHERE sender_id = ? AND receiver_id = ? AND status = 'PENDING'";
+        String updateFriendsTable = "INSERT INTO friends (sender_id, receiver_id) VALUES (?, ?)";
+        String updateConversations = "INSERT INTO conversations (type, created_by_user_id) VALUES (?, ?)";
+        String updateConvPart = "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?)";
+
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+            connection.setAutoCommit(false);
+
+            try {
+                try (PreparedStatement psStatus = connection.prepareStatement(updateStatus)) {
+                    psStatus.setInt(1, id);
+                    psStatus.setInt(2, receiverId);
+                    int affectedRows = psStatus.executeUpdate();
+                    if (affectedRows == 0) {
+                        throw new Exception("Could not accept friend request. Request not found or already accepted.");
+                    }
+                }
+
+                try (PreparedStatement psFriends = connection.prepareStatement(updateFriendsTable)) {
+                    psFriends.setInt(1, id);
+                    psFriends.setInt(2, receiverId);
+                    psFriends.executeUpdate();
+                }
+
+                int conversationId = -1;
+                try (PreparedStatement psConv = connection.prepareStatement(updateConversations, Statement.RETURN_GENERATED_KEYS)) {
+                    psConv.setString(1, "private");
+                    psConv.setInt(2, id);
+                    psConv.executeUpdate();
+
+                    try (ResultSet resultSet = psConv.getGeneratedKeys()) {
+                        if (resultSet.next()) {
+                            conversationId = resultSet.getInt(1);
+                        } else {
+                            throw new Exception("Creating conversation failed, no ID obtained.");
+                        }
+                    }
+                }
+
+                try (PreparedStatement psPart = connection.prepareStatement(updateConvPart)) {
+                    psPart.setInt(1, conversationId);
+                    psPart.setInt(2, id);
+                    psPart.addBatch();
+
+                    psPart.setInt(1, conversationId);
+                    psPart.setInt(2, receiverId);
+                    psPart.addBatch();
+
+                    psPart.executeBatch();
+                }
+
+                connection.commit();
+                System.out.println("Friend request accepted and chat conversation created successfully!");
+                return true;
+
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+    public List<FriendRequestDTO> getAllReceivedRequests (int id) throws SQLException, ClassNotFoundException {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        try(Connection connection = DriverManager.getConnection(DB_URL,DB_USER, DB_PASS))
+        {
+            String query = "Select id, username, email from users " +
+                    " where id in (Select sender_id from friend_requests" +
+                    " where receiver_id = ? and status = 'PENDING')";
+            try(PreparedStatement preparedStatement = connection.prepareStatement(query))
+            {
+                preparedStatement.setInt(1,id);
+                try(ResultSet resultSet = preparedStatement.executeQuery())
+                {
+                    List<FriendRequestDTO> requests = new ArrayList<>();
+                    while(resultSet.next())
+                    {
+                        int userId = resultSet.getInt("id");
+                        String username = resultSet.getString("username");
+                        String email = resultSet.getString("email");
+                        requests.add(new FriendRequestDTO(userId,username,email,true));
+                    }
+                    return requests;
+                }
+            }
         }
     }
 }

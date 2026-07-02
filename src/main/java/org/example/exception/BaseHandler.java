@@ -48,6 +48,7 @@ public abstract class BaseHandler implements HttpHandler {
 
     private static final Logger LOGGER = Logger.getLogger(BaseHandler.class.getName());
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private boolean responseSent = false;
 
     // ── Entry point called by the HTTP server ──────────────────
     @Override
@@ -58,12 +59,18 @@ public abstract class BaseHandler implements HttpHandler {
             // Known business-logic error — send its own status + message
             LOGGER.log(Level.WARNING, "AppException [{0}]: {1}",
                     new Object[]{ex.getStatusCode(), ex.getMessage()});
-            sendErrorResponse(exchange, ex.getStatusCode(), ex.getMessage());
+            if (!responseSent) {
+                sendErrorResponse(exchange, ex.getStatusCode(), ex.getMessage());
+            }
 
         } catch (Exception ex) {
             // Unexpected / unhandled error — always 500
             LOGGER.log(Level.SEVERE, "Unhandled exception in " + getClass().getSimpleName(), ex);
-            sendErrorResponse(exchange, 500, "Internal server error. Please try again later.");
+            if (!responseSent) {
+                sendErrorResponse(exchange, 500, "Internal server error. Please try again later.");
+            }
+        } finally {
+            exchange.close();
         }
     }
 
@@ -86,6 +93,7 @@ public abstract class BaseHandler implements HttpHandler {
     protected void sendJson(HttpExchange exchange, int statusCode, Object body) throws IOException {
         if (statusCode == 204) { // 204 No Content must not have a body
             exchange.sendResponseHeaders(statusCode, -1); // -1 indicates no response body
+            responseSent = true;
             return;
         }
 
@@ -93,6 +101,7 @@ public abstract class BaseHandler implements HttpHandler {
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         byte[] bytes = json.getBytes();
         exchange.sendResponseHeaders(statusCode, bytes.length);
+        responseSent = true;
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
@@ -104,12 +113,14 @@ public abstract class BaseHandler implements HttpHandler {
     protected void sendText(HttpExchange exchange, int statusCode, String text) throws IOException {
         if (statusCode == 204) { // 204 No Content must not have a body
             exchange.sendResponseHeaders(statusCode, -1); // -1 indicates no response body
+            responseSent = true;
             return;
         }
 
         exchange.getResponseHeaders().set("Content-Type", "text/plain");
         byte[] bytes = text.getBytes();
         exchange.sendResponseHeaders(statusCode, bytes.length);
+        responseSent = true;
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
@@ -126,6 +137,7 @@ public abstract class BaseHandler implements HttpHandler {
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             byte[] bytes = json.getBytes();
             exchange.sendResponseHeaders(statusCode, bytes.length);
+            responseSent = true;
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(bytes);
             }

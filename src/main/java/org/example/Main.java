@@ -31,6 +31,21 @@ public class Main {
             HttpContext cancelRequest = server.createContext("/request/cancel/", new DeleteRequestController());
             cancelRequest.getFilters().add(new AuthFilter());
 
+            HttpContext getReceivedRequests = server.createContext("/request/received", new GetReceivedFriendRequest());
+            getReceivedRequests.getFilters().add(new AuthFilter());
+
+            HttpContext acceptRequest = server.createContext("/request/accept/", new AcceptFriendRequest());
+            acceptRequest.getFilters().add(new AuthFilter());
+
+            HttpContext getConversations = server.createContext("/conversations/all", new GetConversations());
+            getConversations.getFilters().add(new AuthFilter());
+
+            HttpContext getConversationMessages = server.createContext("/conversations/messages", new GetConversationMessages());
+            getConversationMessages.getFilters().add(new AuthFilter());
+
+            HttpContext sendMessage = server.createContext("/messages/send", new SendMessageController());
+            sendMessage.getFilters().add(new AuthFilter());
+
             server.start();
             System.out.println("Server is running on http://localhost:" + 8080);
 //            Thread.currentThread().join();

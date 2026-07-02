@@ -7,14 +7,17 @@ import com.sun.net.httpserver.HttpServer;
 import org.example.controllers.*;
 import org.example.filters.AuthFilter;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.Socket;
+
 public class Main {
     public static void main(String[] args) {
         HttpServer server = null;
+        System.out.println("Starting Server...");
         try{
-            server= HttpServer.create( new InetSocketAddress("localhost",8080), 0);
+
+            server = HttpServer.create( new InetSocketAddress("localhost",8080), 0);
             server.createContext("/", new RootHandler());
             server.createContext("/auth/sign-up", new SignUpController());
             server.createContext("/auth/sign-in", new SignInController());

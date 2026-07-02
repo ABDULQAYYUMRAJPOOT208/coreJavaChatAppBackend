@@ -1,5 +1,7 @@
 package org.example.Dto.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class MessageDTO {
     private int id;
     private int conversationId;
@@ -10,7 +12,6 @@ public class MessageDTO {
     private String messageType;
 
     public MessageDTO() {}
-
     public MessageDTO(int id, int conversationId, int senderId, String content, String timestamp, String status, String messageType) {
         this.id = id;
         this.conversationId = conversationId;

@@ -2,11 +2,11 @@ package org.example.Dto.chat;
 
 public class ConversationDTO {
     private int conversationId;
-    private String conversationType; // 'private' or 'group'
-    private String conversationName; // Null for private, name of group for group chats
-    private int friendId;            // User ID of the friend (0 if group)
-    private String friendUsername;   // Username of the friend (null if group)
-    private String friendEmail;      // Email of the friend (null if group)
+    private String conversationType;
+    private String conversationName;
+    private int friendId;
+    private String friendUsername;
+    private String friendEmail;
     private String lastMessageContent;
     private String lastMessageTimestamp;
     private int unreadCount;

@@ -27,9 +27,7 @@ public class SignUpController extends BaseHandler {
         String requestBody = new String(inputStream.readAllBytes());
         UserSignUpReq userSignUpReq = objectMapper.readValue(requestBody, UserSignUpReq.class);
 
-        // authService.SignUpUser() can freely throw:
-        //   DuplicateResourceException → 409 sent automatically
-        //   anything else              → 500 sent automatically
+
         UserSignUpRes userSignUpRes = authService.SignUpUser(userSignUpReq);
         System.out.println("User signed up: " + userSignUpRes);
 

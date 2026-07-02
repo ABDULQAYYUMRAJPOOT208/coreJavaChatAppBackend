@@ -1,11 +1,19 @@
 package org.example.repos;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.example.Dto.chat.ConversationDTO;
 import org.example.Dto.chat.MessageDTO;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ConversationRepo {
     private final String DB_URL = "jdbc:mysql://localhost:3306/chatApp";
@@ -101,6 +109,10 @@ public class ConversationRepo {
     }
 
     public boolean sendMessage(int conversationId, int senderId, String content) throws Exception {
+        return sendMessageAndReturn(conversationId, senderId, content) != null;
+    }
+
+    public MessageDTO sendMessageAndReturn(int conversationId, int senderId, String content) throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
         String insertQuery = "INSERT INTO messages (conversation_id, sender_id, content) VALUES (?, ?, ?)";
         String updateConvQuery = "UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = ?";
@@ -108,11 +120,19 @@ public class ConversationRepo {
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
             conn.setAutoCommit(false);
             try {
-                try (PreparedStatement psInsert = conn.prepareStatement(insertQuery)) {
+                int generatedId;
+                try (PreparedStatement psInsert = conn.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
                     psInsert.setInt(1, conversationId);
                     psInsert.setInt(2, senderId);
                     psInsert.setString(3, content);
                     psInsert.executeUpdate();
+
+                    try (ResultSet generatedKeys = psInsert.getGeneratedKeys()) {
+                        if (!generatedKeys.next()) {
+                            throw new SQLException("Creating message failed, no ID obtained.");
+                        }
+                        generatedId = generatedKeys.getInt(1);
+                    }
                 }
 
                 try (PreparedStatement psUpdate = conn.prepareStatement(updateConvQuery)) {
@@ -121,7 +141,93 @@ public class ConversationRepo {
                 }
 
                 conn.commit();
-                return true;
+                return new MessageDTO(generatedId, conversationId, senderId, content, new Timestamp(System.currentTimeMillis()).toString(), "sent", "text");
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    public List<Integer> getParticipantUserIds(int conversationId) throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        List<Integer> userIds = new ArrayList<>();
+        String query = "SELECT user_id FROM conversation_participants WHERE conversation_id = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setInt(1, conversationId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    userIds.add(rs.getInt("user_id"));
+                }
+            }
+        }
+        return userIds;
+    }
+
+    public Integer getUserIdByEmail(String email) throws Exception {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String query = "SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+             PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, email.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+        return null;
+    }
+
+    public int createGroupConversation(int createdByUserId, String groupName, List<Integer> participantIds) throws Exception {
+        if (groupName == null || groupName.isBlank()) {
+            throw new IllegalArgumentException("Group name cannot be empty.");
+        }
+        if (participantIds == null || participantIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one participant is required.");
+        }
+
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String insertConvQuery = "INSERT INTO conversations (type, name, created_by_user_id) VALUES ('group', ?, ?)";
+        String insertParticipantQuery = "INSERT INTO conversation_participants (conversation_id, user_id) VALUES (?, ?)";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
+            conn.setAutoCommit(false);
+            try {
+                int generatedConversationId;
+                try (PreparedStatement psInsert = conn.prepareStatement(insertConvQuery, Statement.RETURN_GENERATED_KEYS)) {
+                    psInsert.setString(1, groupName.trim());
+                    psInsert.setInt(2, createdByUserId);
+                    psInsert.executeUpdate();
+                    try (ResultSet generatedKeys = psInsert.getGeneratedKeys()) {
+                        if (!generatedKeys.next()) {
+                            throw new SQLException("Creating group conversation failed, no ID obtained.");
+                        }
+                        generatedConversationId = generatedKeys.getInt(1);
+                    }
+                }
+
+                try (PreparedStatement psPart = conn.prepareStatement(insertParticipantQuery)) {
+                    Set<Integer> uniqueParticipantIds = new LinkedHashSet<>(participantIds);
+                    uniqueParticipantIds.add(createdByUserId);
+                    for (Integer participantId : uniqueParticipantIds) {
+                        psPart.setInt(1, generatedConversationId);
+                        psPart.setInt(2, participantId);
+                        psPart.addBatch();
+                    }
+                    psPart.executeBatch();
+                }
+
+                conn.commit();
+                return generatedConversationId;
             } catch (Exception e) {
                 conn.rollback();
                 throw e;

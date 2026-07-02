@@ -65,7 +65,6 @@ public class UserRepo {
                 }
             }
         } catch (SQLIntegrityConstraintViolationException e) {
-            // Duplicate email — DB unique constraint violated
             throw new DuplicateResourceException("Email is already registered");
         } catch (Throwable e) {
             System.err.println("[DEBUG] Catch block caught Throwable in UserRepo createUser: " + e.getMessage());
@@ -96,11 +95,9 @@ public class UserRepo {
                             String token = jwtUtil.generateToken(userId);
                             return new UserSignInRes(userId, "User Signed In Successfully...", token);
                         } else {
-                            // Wrong password → HTTP 401
                             throw new InvalidPasswordException("Incorrect password");
                         }
                     } else {
-                        // No user row found → HTTP 404
                         throw new UserNotFoundException("User with email " + userSignInReq.getEmail() + " not found");
                     }
 
@@ -132,14 +129,6 @@ public class UserRepo {
         return null;
     }
 
-    /**
-     * Search users who are not yet friends/have no pending request with the given user.
-     * Filters by username or email containing the search query (case-insensitive).
-     *
-     * @param id    the current user's id
-     * @param query search term (empty/null returns all non-friend users)
-     * @return list of matching User objects
-     */
     public List<User> getUsersNotFriendship(int id, String query) throws Exception {
         Class.forName("com.mysql.cj.jdbc.Driver");
 

@@ -4,7 +4,7 @@ public class FriendRequestDTO {
     private int id;
     private String username;
     private String email;
-    private boolean incoming; // true = received (incoming), false = sent
+    private boolean incoming;
 
     public FriendRequestDTO(int id, String username, String email, boolean incoming) {
         this.id = id;
@@ -13,7 +13,6 @@ public class FriendRequestDTO {
         this.incoming = incoming;
     }
 
-    // Include standard getters and setters for Jackson mapping consistency
     public int getId() { return id; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }

@@ -14,7 +14,7 @@ public class AcceptFriendRequest extends BaseHandler {
         String userIdStr = (String) exchange.getAttribute("User-Id");
         int userId = Integer.parseInt(userIdStr);
         String path = exchange.getRequestURI().getPath();
-        int senderId = Integer.parseInt(path.substring(path.lastIndexOf("/") + 1)); // Renamed for clarity
+        int senderId = Integer.parseInt(path.substring(path.lastIndexOf("/") + 1));
         RequestRepo requestRepo = new RequestRepo();
         boolean result = requestRepo.acceptFriendRequest(senderId, userId);
         if (result) {

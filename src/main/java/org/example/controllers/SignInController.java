@@ -26,10 +26,7 @@ public class SignInController extends BaseHandler {
         UserSignInReq userSignInReq = objectMapper.readValue(requestBody, UserSignInReq.class);
         System.out.println("Sign in request >> " + userSignInReq);
 
-        // authService.signInUser() can freely throw:
-        //   InvalidPasswordException  → 401 sent automatically
-        //   UserNotFoundException     → 404 sent automatically
-        //   anything else             → 500 sent automatically
+
         UserSignInRes userSignInRes = authService.signInUser(userSignInReq);
 
         sendJson(exchange, 200, userSignInRes);

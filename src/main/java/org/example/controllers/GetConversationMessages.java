@@ -18,7 +18,7 @@ public class GetConversationMessages extends BaseHandler {
             return;
         }
 
-        String rawQuery = exchange.getRequestURI().getQuery(); // e.g. "conversationId=1"
+        String rawQuery = exchange.getRequestURI().getQuery();
         String convIdStr = null;
         if (rawQuery != null) {
             for (String param : rawQuery.split("&")) {

@@ -28,7 +28,6 @@ public class AuthService {
             throw new BadRequestException("Password is required");
         }
 
-        // UserRepo can throw DuplicateResourceException, which BaseHandler will catch automatically
         return userRepo.createUser(userSignUpReq);
     }
 
@@ -40,8 +39,7 @@ public class AuthService {
             throw new BadRequestException("Password is required");
         }
 
-        // UserRepo can throw UserNotFoundException or InvalidPasswordException,
-        // which BaseHandler will catch automatically
+
         return userRepo.signInUser(userSignInReq);
     }
 }

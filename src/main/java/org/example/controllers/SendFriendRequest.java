@@ -28,21 +28,17 @@ public class SendFriendRequest extends BaseHandler {
         System.out.println("Request body: " + requestBody);
         String path = exchange.getRequestURI().getPath();
         String receiverId = path.substring(path.lastIndexOf("/") + 1);
-//        SendRequestReq sendRequestReq = objectMapper.readValue(requestBody, SendRequestReq.class);
 
         if (receiverId.isEmpty()) {
-            // BadRequestException → 400 sent automatically by BaseHandler
             throw new BadRequestException("Receiver ID cannot be empty.");
         }
 
         String senderId = (String) exchange.getAttribute("User-Id");
         if (senderId == null || senderId.trim().isEmpty()) {
-            // This is a safety net; AuthFilter already blocks unauthenticated requests
             throw new BadRequestException("Missing sender User-Id.");
         }
 
-        // friendRequestService.sendFriendRequest() can throw any AppException subclass
-        // and it will be handled automatically — no try/catch needed here.
+
         friendRequestService.sendFriendRequest(senderId, receiverId);
 
         sendText(exchange, 201, "Friend request successfully sent.");

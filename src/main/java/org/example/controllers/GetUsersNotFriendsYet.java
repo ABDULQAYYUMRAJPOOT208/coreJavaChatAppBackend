@@ -20,9 +20,8 @@ public class GetUsersNotFriendsYet extends BaseHandler {
 
         String userId = (String) exchange.getAttribute("User-Id");
 
-        // Parse optional ?query= parameter from the URL
         String searchQuery = null;
-        String rawQuery = exchange.getRequestURI().getQuery(); // e.g. "query=john"
+        String rawQuery = exchange.getRequestURI().getQuery();
         if (rawQuery != null) {
             for (String param : rawQuery.split("&")) {
                 if (param.startsWith("query=")) {
